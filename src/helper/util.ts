@@ -47,7 +47,7 @@ export const hidePopup = () => {
   setPluginStyle(`${_style}\n${HIDE_POPUP_STYLE}`);
 };
 
-export const debounce = (fn, wait: number = 100, environment?: any) => {
+export const debounce = (fn, wait: number = 5000, environment?: any) => {
   let timer = null;
   return function () {
     return new Promise(((resolve) => {
