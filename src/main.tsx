@@ -102,6 +102,53 @@ if (isDevelopment) {
         }
         await checkStatus();
       }),
+      sync: debounce(async function () {
+        console.log("[faiz:] === sync click");
+        setPluginStyle(LOADING_STYLE);
+        hidePopup();
+        const status = await checkStatus();
+        console.log("[faiz:]   => sync status done");
+        const changed = status?.stdout !== "";
+        if (changed) {
+          console.log("[faiz:]   changes => try commit");
+          const res = await commit(true, commitMessage());
+          console.log("[faiz:]   changes => commit done");
+          if (res.exitCode === 0) {
+            console.log("[faiz:]   changes => commit ok => try pullRebase");
+            const res = await pullRebase(true);
+            console.log("[faiz:]   changes => commit ok => pullRebase done");
+            if (res.exitCode === 0) {
+              console.log("[faiz:]   changes => commit ok => pullRebase done => try push");
+              const res = await push();
+              console.log("[faiz:]   changes => commit ok => pullRebase done => push done");
+              if (res.exitCode === 0) {
+                console.log("[faiz:]   changes => commit ok => pullRebase done => push ok");
+              } else {
+                console.log("[faiz:]   changes => commit ok => pullRebase done => push failed");
+              }
+            } else {
+              console.log("[faiz:]   changes => commit ok => pullRebase failed");
+            }
+          };
+        } else {
+          console.log("[faiz:]   no changes => try pullRebase");
+          const res = await pullRebase(true);
+          console.log("[faiz:]   no changes => pullRebase done");
+          if (res.exitCode === 0) {
+            console.log("[faiz:]   no changes => pullRebase ok => try push");
+            await push();
+            console.log("[faiz:]   no changes => pullRebase ok => push done");
+            if (res.exitCode === 0) {
+              console.log("[faiz:]   no changes => pullRebase ok => push ok");
+            } else {
+              console.log("[faiz:]   no changes => pullRebase ok => push failed");
+            }
+          } else {
+            console.log("[faiz:]   no changes => pullRebase failed");
+          }
+        }
+        await checkStatus();
+      }),
       log: debounce(async function () {
         console.log("[faiz:] === log click");
         const res = await log(false);
