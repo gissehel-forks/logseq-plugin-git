@@ -50,22 +50,26 @@ export const hidePopup = () => {
 export const debounce = (fn, wait: number = 100, environment?: any) => {
   let timer = null;
   return function () {
-    // @ts-ignore
-    const context = environment || this;
-    const args = arguments;
-    if (timer) {
-      clearTimeout(timer);
-      timer = null;
-    }
-    // @ts-ignore
-    timer = setTimeout(function () {
-      fn.apply(context, args);
-    }, wait);
+    return new Promise(((resolve) => {
+      // @ts-ignore
+      const context = environment || this;
+      const args = arguments;
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      // @ts-ignore
+      timer = setTimeout(function () {
+        (fn.apply(context, args)).then(() => {
+          resolve(null);
+        });
+      }, wait);
+    }));
   };
 };
 
-export const checkStatusWithDebounce = debounce(() => {
-  checkStatus();
+export const checkStatusWithDebounce = debounce(async () => {
+  await checkStatus();
 }, 2000);
 
 export const isRepoUpTodate = async () => {

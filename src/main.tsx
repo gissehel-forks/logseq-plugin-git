@@ -44,7 +44,7 @@ if (isDevelopment) {
   renderApp("browser");
 } else {
   console.log("=== logseq-plugin-git loaded ===");
-  logseq.ready(() => {
+  logseq.ready(async () => {
     const operations = {
       check: debounce(async function () {
         const status = await checkStatus();
@@ -62,30 +62,30 @@ if (isDevelopment) {
         setPluginStyle(LOADING_STYLE);
         hidePopup();
         await pull(false);
-        checkStatus();
+        await checkStatus();
       }),
       pullRebase: debounce(async function () {
         console.log("[faiz:] === pullRebase click");
         setPluginStyle(LOADING_STYLE);
         hidePopup();
         await pullRebase();
-        checkStatus();
+        await checkStatus();
       }),
       checkout: debounce(async function () {
         console.log("[faiz:] === checkout click");
         hidePopup();
-        checkout();
+        await checkout();
       }),
       commit: debounce(async function () {
         hidePopup();
         await commit(true, commitMessage());
-        checkStatus();
+        await checkStatus();
       }),
       push: debounce(async function () {
         setPluginStyle(LOADING_STYLE);
         hidePopup();
         await push();
-        checkStatus();
+        await checkStatus();
       }),
       commitAndPush: debounce(async function () {
         setPluginStyle(LOADING_STYLE);
@@ -100,7 +100,7 @@ if (isDevelopment) {
           );
           if (res.exitCode === 0) await push(true);
         }
-        checkStatus();
+        await checkStatus();
       }),
       log: debounce(async function () {
         console.log("[faiz:] === log click");
@@ -166,16 +166,16 @@ if (isDevelopment) {
     }, 1000);
 
     logseq.App.onRouteChanged(async () => {
-      checkStatusWithDebounce();
+      await checkStatusWithDebounce();
     });
     if (logseq.settings?.checkWhenDBChanged) {
-      logseq.DB.onChanged(({ blocks, txData, txMeta }) => {
-        checkStatusWithDebounce();
+      logseq.DB.onChanged(async ({ blocks, txData, txMeta }) => {
+        await checkStatusWithDebounce();
       });
     }
 
     if (logseq.settings?.autoCheckSynced) checkIsSynced();
-    checkStatusWithDebounce();
+    await checkStatusWithDebounce();
 
     if (top) {
       top.document?.addEventListener("visibilitychange", async () => {
@@ -188,7 +188,7 @@ if (isDevelopment) {
           // noChange void
           // changed commit push
           if (logseq.settings?.autoPush) {
-            operations.commitAndPush();
+            await operations.commitAndPush();
           }
         }
       });
@@ -203,7 +203,7 @@ if (isDevelopment) {
           mode: "global",
         },
       },
-      () => operations.commit()
+      async () => await operations.commit()
     );
     logseq.App.registerCommandPalette(
       {
@@ -214,7 +214,7 @@ if (isDevelopment) {
           mode: "global",
         },
       },
-      () => operations.commitAndPush()
+      async () => await operations.commitAndPush()
     );
     logseq.App.registerCommandPalette(
         {
@@ -225,7 +225,7 @@ if (isDevelopment) {
             mode: "global",
           },
         },
-        () => operations.pullRebase()
+        async () => await operations.pullRebase()
     );
   });
 }
