@@ -1,30 +1,123 @@
 import {
-  ACTIVE_STYLE,
+  COMMON_STYLE,
   HIDE_POPUP_STYLE,
-  INACTIVE_STYLE,
   SHOW_POPUP_STYLE,
+  STATUS,
 } from "./constants";
-import { status, inProgress, execGitCommand } from "./git";
+import { status, inProgress, execGitCommand, pull, checkPullPushNeeded } from "./git";
+
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const checkStatus = async () => {
-  console.log("Checking status...");
+  console.log("Checking status...");  
   const statusRes = await status(false);
   if (statusRes?.stdout === "") {
     console.log("No changes", statusRes);
-    setPluginStyle(INACTIVE_STYLE);
+    await setCommitStatus(STATUS.COMMIT.CLEAN);
   } else {
     console.log("Need save", statusRes);
-    setPluginStyle(ACTIVE_STYLE);
+    await setCommitStatus(STATUS.COMMIT.DIRTY);
+  }
+  await delay(100);
+  const pullPushNeeded = await checkPullPushNeeded();
+  if (pullPushNeeded.needPull) {
+    console.log("Need pull");
+    await setPullStatus(STATUS.PULL.NEEDED);
+  } else {
+    console.log("No need pull");
+    await setPullStatus(STATUS.PULL.NOT_NEEDED);
+  }
+  if (pullPushNeeded.needPush) {
+    console.log("Need push");
+    await setPushStatus(STATUS.PUSH.NEEDED);
+  } else {
+    console.log("No need push");
+    await setPushStatus(STATUS.PUSH.NOT_NEEDED);
   }
   return statusRes;
 };
 
-let pluginStyle = "";
+let pluginStyle = COMMON_STYLE;
 export const setPluginStyle = (style: string) => {
   pluginStyle = style;
   logseq.provideStyle({ key: "git", style });
 };
 export const getPluginStyle = () => pluginStyle;
+
+let pullStatus: string | null = null;
+let pushStatus: string | null = null;
+let commitStatus: string | null = null;
+let commitInProgress: boolean = false;
+let pullInProgress: boolean = false;
+let pushInProgress: boolean = false;
+
+const setIndicator = (element, value, valueSet, valueRemove, className) => {
+  if (value === valueSet) {
+    element?.classList?.add(className);
+  }
+  if (value === valueRemove) {
+    element?.classList?.remove(className);
+  }
+};
+
+const setIndicatorBoolean = (element, value, className) => {
+  if (value) {
+    element?.classList?.add(className);
+  } else {
+    element?.classList?.remove(className);
+  }
+};
+
+const updateStatusIndicators = async () => {
+  const indicatorElement = top?.document?.querySelector('#logseq-git--git')
+  console.log({indicatorElement, pullStatus, pushStatus, commitStatus, commitInProgress, pullInProgress, pushInProgress});
+  if (indicatorElement == null) return;
+
+  setIndicator(indicatorElement, pullStatus, STATUS.PULL.NEEDED, STATUS.PULL.NOT_NEEDED, "git-pull");
+  setIndicator(indicatorElement, pushStatus, STATUS.PUSH.NEEDED, STATUS.PUSH.NOT_NEEDED, "git-push");
+  setIndicator(indicatorElement, commitStatus, STATUS.COMMIT.DIRTY, STATUS.COMMIT.CLEAN, "git-commit");
+  setIndicatorBoolean(indicatorElement, commitInProgress, "git-blink-commit");
+  setIndicatorBoolean(indicatorElement, pullInProgress, "git-blink-pull");
+  setIndicatorBoolean(indicatorElement, pushInProgress, "git-blink-push");
+}
+// @ts-ignore
+window.updateStatusIndicators = updateStatusIndicators;
+
+export const setPullStatus = async (status: string | null) => {
+  pullStatus = status;
+  await updateStatusIndicators();
+};
+export const getPullStatus = async () => pullStatus;
+
+export const setPushStatus = async (status: string | null) => {
+  pushStatus = status;
+  await updateStatusIndicators();
+};
+export const getPushStatus = async () => pushStatus;
+
+export const setCommitStatus = async (status: string | null) => {
+  commitStatus = status;
+  await updateStatusIndicators();
+};
+export const getCommitStatus = async () => commitStatus;
+
+export const setCommitInProgress = async (inProgress: boolean) => {
+  commitInProgress = inProgress;
+  await updateStatusIndicators();
+};
+export const getCommitInProgress = async () => commitInProgress;
+
+export const setPullInProgress = async (inProgress: boolean) => {
+  pullInProgress = inProgress;
+  await updateStatusIndicators();
+};
+export const getPullInProgress = async () => pullInProgress;
+
+export const setPushInProgress = async (inProgress: boolean) => {
+  pushInProgress = inProgress;
+  await updateStatusIndicators();
+};
+export const getPushInProgress = async () => pushInProgress;
 
 export const showPopup = () => {
   const _style = getPluginStyle();
@@ -47,7 +140,7 @@ export const hidePopup = () => {
   setPluginStyle(`${_style}\n${HIDE_POPUP_STYLE}`);
 };
 
-export const debounce = (fn, wait: number = 5000, environment?: any) => {
+export const debounce = (fn, wait: number = 100, environment?: any) => {
   let timer = null;
   return function () {
     return new Promise(((resolve) => {

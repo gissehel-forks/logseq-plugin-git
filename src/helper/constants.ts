@@ -39,6 +39,41 @@ export const COMMON_STYLE = `
   border-width: 0 10px 8px 10px;
   border-color: transparent transparent var(--ls-secondary-background-color) transparent;
 }
+.git-status-push, .git-status-pull, .git-status-commit {
+  position: absolute;
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 100%;
+  right: 0px;
+  top: 8px;
+}
+.git-push .git-status-push {
+  background-color: rgb(59, 130, 246); /* blue-500 */
+  right: 4px;
+}
+.git-pull .git-status-pull {
+  background-color: rgb(251, 191, 36); /* yellow-400 */
+  right: 14px;
+}
+.git-commit .git-status-commit {
+  background-color: rgb(239, 68, 68); /* red-500 */
+  right: 24px;
+}
+.git-blink-push.git-push .git-status-push, .git-blink-pull.git-pull .git-status-pull, .git-blink-commit.git-commit .git-status-commit {
+  animation: blink 1s ease-in-out infinite;
+}
+@keyframes blink {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
 `;
 
 export const SHOW_POPUP_STYLE = `
@@ -49,54 +84,6 @@ export const SHOW_POPUP_STYLE = `
 export const HIDE_POPUP_STYLE = `
 .plugin-git-container {
   display: none;
-}
-`;
-
-export const INACTIVE_STYLE = `
-${COMMON_STYLE}
-#injected-ui-item-git-logseq-git::after {
-  display: none;
-}
-`;
-export const ACTIVE_STYLE = `
-${COMMON_STYLE}
-#injected-ui-item-git-logseq-git::after {
-  display: block;
-  content: '';
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  border-radius: 100%;
-  background-color: rgb(237, 66, 69);
-  right: 8px;
-  top: 6px;
-}
-`;
-
-export const LOADING_STYLE = `
-${COMMON_STYLE}
-#injected-ui-item-git-logseq-git::after {
-  display: block;
-  content: '';
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  border-radius: 100%;
-  background-color: rgb(237, 66, 69);
-  right: 8px;
-  top: 6px;
-  animation: blink 1s linear infinite;
-}
-@keyframes blink {
-  0% {
-    opacity: 0;
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
 }
 `;
 
@@ -161,3 +148,18 @@ export const SETTINGS_SCHEMA: SettingSchemaDesc[] = [
     description: "Custom commit message for plugin (valid only if commit message is set to Custom Message)",
   }
 ];
+
+export const STATUS = {
+  PULL: {
+    NOT_NEEDED: "NOT_NEEDED",
+    NEEDED: "NEEDED",
+  },
+  PUSH: {
+    NOT_NEEDED: "NOT_NEEDED",
+    NEEDED: "NEEDED",
+  },
+  COMMIT: {
+    CLEAN: "CLEAN",
+    DIRTY: "DIRTY",
+  },
+}

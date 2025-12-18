@@ -51,6 +51,22 @@ export const status = async (showRes = true): Promise<IGitResult> => {
   return res
 }
 
+export const checkPullPushNeeded = async (): Promise<{ needPull: boolean; needPush: boolean }> => {
+  await execGitCommand(['fetch'])
+  const result = await execGitCommand(['for-each-ref', '--format="%(push:track)"', 'refs/heads'])
+  let needPull = false
+  let needPush = false
+  if (result.exitCode === 0) {
+    if (result.stdout.includes('ahead')) {
+      needPush = true
+    }
+    if (result.stdout.includes('behind')) {
+      needPull = true
+    }
+  }
+  return { needPull, needPush }
+}
+
 // log with git log --pretty=format:"%h %ad | %s%d [%an]" --date=short
 export const log = async (showRes = true): Promise<IGitResult> => {
   // git log --pretty=format:"%h %s" -n 1

@@ -2,7 +2,7 @@ import "@logseq/libs";
 import React from "react";
 import ReactDOM from "react-dom";
 import App from "./App";
-import { BUTTONS, LOADING_STYLE, SETTINGS_SCHEMA } from "./helper/constants";
+import { BUTTONS, COMMON_STYLE, SETTINGS_SCHEMA } from "./helper/constants";
 import {
   checkout,
   commit,
@@ -11,7 +11,6 @@ import {
   pull,
   pullRebase,
   push,
-  status,
 } from "./helper/git";
 import {
   checkStatus,
@@ -21,7 +20,9 @@ import {
   showPopup,
   checkIsSynced,
   checkStatusWithDebounce,
-  getPluginStyle,
+  setPullInProgress,
+  setCommitInProgress,
+  setPushInProgress,
 } from "./helper/util";
 import "./index.css";
 
@@ -31,12 +32,17 @@ try {
   // @ts-ignore
   top.logseq.sdk.git.exec_command(['status'])
 } catch (e) {
+  console.log(`Git plugin: ${e} - patching logseq.Git.execCommand`);
   // @ts-ignore
   logseq.Git['execCommand'] = async function (args: string[]) {
-    const ret = await logseq.App.execGitCommand(args)
+    // const ret = await logseq.App.execGitCommand(args)
+    // @ts-ignore
+    const ret = await top.logseq.sdk.git.exec_command(args)
     return {exitCode: ret == undefined ? 1 : 0, stdout: ret}
   }
 }
+
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const isDevelopment = import.meta.env.DEV
 
@@ -59,16 +65,20 @@ if (isDevelopment) {
       }),
       pull: debounce(async function () {
         console.log("[faiz:] === pull click");
-        setPluginStyle(LOADING_STYLE);
+        await setPullInProgress(true);
+        // setPluginStyle(LOADING_STYLE);
         hidePopup();
         await pull(false);
+        await setPullInProgress(false);
         await checkStatus();
       }),
       pullRebase: debounce(async function () {
         console.log("[faiz:] === pullRebase click");
-        setPluginStyle(LOADING_STYLE);
+        await setPullInProgress(true);
+        // setPluginStyle(LOADING_STYLE);
         hidePopup();
         await pullRebase();
+        await setPullInProgress(false);
         await checkStatus();
       }),
       checkout: debounce(async function () {
@@ -77,18 +87,28 @@ if (isDevelopment) {
         await checkout();
       }),
       commit: debounce(async function () {
+        console.log("[faiz:] === commit called");
+        await setCommitInProgress(true);
         hidePopup();
+        console.log("    start commit");
         await commit(true, commitMessage());
+        console.log("    end commit");
+        await setCommitInProgress(false);
         await checkStatus();
       }),
       push: debounce(async function () {
-        setPluginStyle(LOADING_STYLE);
+        console.log("[faiz:] === push called");
+        await setPushInProgress(true);
+        // setPluginStyle(LOADING_STYLE);
         hidePopup();
         await push();
+        await setPushInProgress(false);
         await checkStatus();
       }),
       commitAndPush: debounce(async function () {
-        setPluginStyle(LOADING_STYLE);
+        console.log("[faiz:] === commitAndPush called");
+        await setCommitInProgress(true);
+        // setPluginStyle(LOADING_STYLE);
         hidePopup();
 
         const status = await checkStatus();
@@ -98,28 +118,51 @@ if (isDevelopment) {
               true,
               commitMessage()
           );
-          if (res.exitCode === 0) await push(true);
+          await setCommitInProgress(false);
+          if (res.exitCode === 0) {
+            await setPushInProgress(true);
+            await push(true);
+            await setPushInProgress(false);
+          };
         }
+        
         await checkStatus();
       }),
       sync: debounce(async function () {
         console.log("[faiz:] === sync click");
-        setPluginStyle(LOADING_STYLE);
         hidePopup();
+        try {
         const status = await checkStatus();
         console.log("[faiz:]   => sync status done");
         const changed = status?.stdout !== "";
         if (changed) {
           console.log("[faiz:]   changes => try commit");
-          const res = await commit(true, commitMessage());
+          await setCommitInProgress(true);
+          let exitCode: number | null = null;
+          try {
+            const res = await commit(true, commitMessage());
+            exitCode = res.exitCode;
+            await setCommitInProgress(false);
+          } catch (e) {
+            console.error("[faiz:] === commit error", e);
+            await setCommitInProgress(false);
+            await delay(2000);
+            exitCode = 0;
+            await checkStatus();
+          }
+
           console.log("[faiz:]   changes => commit done");
-          if (res.exitCode === 0) {
+          if (exitCode === 0) {
             console.log("[faiz:]   changes => commit ok => try pullRebase");
+            await setPullInProgress(true);
             const res = await pullRebase(true);
+            await setPullInProgress(false);
             console.log("[faiz:]   changes => commit ok => pullRebase done");
             if (res.exitCode === 0) {
               console.log("[faiz:]   changes => commit ok => pullRebase done => try push");
+              await setPushInProgress(true);
               const res = await push();
+              await setPushInProgress(false);
               console.log("[faiz:]   changes => commit ok => pullRebase done => push done");
               if (res.exitCode === 0) {
                 console.log("[faiz:]   changes => commit ok => pullRebase done => push ok");
@@ -132,11 +175,15 @@ if (isDevelopment) {
           };
         } else {
           console.log("[faiz:]   no changes => try pullRebase");
+          await setPullInProgress(true);
           const res = await pullRebase(true);
+          await setPullInProgress(false);
           console.log("[faiz:]   no changes => pullRebase done");
           if (res.exitCode === 0) {
             console.log("[faiz:]   no changes => pullRebase ok => try push");
+            await setPushInProgress(true);
             await push();
+            await setPushInProgress(false);
             console.log("[faiz:]   no changes => pullRebase ok => push done");
             if (res.exitCode === 0) {
               console.log("[faiz:]   no changes => pullRebase ok => push ok");
@@ -148,6 +195,14 @@ if (isDevelopment) {
           }
         }
         await checkStatus();
+        } catch (e) {
+          console.error("[faiz:] === sync error", e);
+          await setCommitInProgress(false);
+          await setPullInProgress(false);
+          await setPushInProgress(false);
+          await delay(10000);
+          await checkStatus();
+        }
       }),
       log: debounce(async function () {
         console.log("[faiz:] === log click");
@@ -170,7 +225,11 @@ if (isDevelopment) {
     logseq.App.registerUIItem("toolbar", {
       key: "git",
       template:
-        '<a data-on-click="showPopup" class="button"><i class="ti ti-brand-git"></i></a><div id="plugin-git-content-wrapper"></div>',
+        '<a data-on-click="showPopup" class="button"><i class="ti ti-brand-git"></i></a>'+
+        '<div id="plugin-git-content-wrapper"></div>'+
+        '<div class="git-status-commit"></div>'+
+        '<div class="git-status-pull"></div>'+
+        '<div class="git-status-push"></div>',
     });
     logseq.useSettingsSchema(SETTINGS_SCHEMA);
     setTimeout(() => {
@@ -210,7 +269,7 @@ if (isDevelopment) {
             ?.addEventListener("click", operations?.[button!?.event]);
         });
       }
-    }, 1000);
+    }, 1007);
 
     logseq.App.onRouteChanged(async () => {
       await checkStatusWithDebounce();
@@ -221,7 +280,11 @@ if (isDevelopment) {
       });
     }
 
-    if (logseq.settings?.autoCheckSynced) checkIsSynced();
+    setPluginStyle(COMMON_STYLE)
+
+    if (logseq.settings?.autoCheckSynced) {
+      checkIsSynced();
+    }
     await checkStatusWithDebounce();
 
     if (top) {
@@ -229,13 +292,15 @@ if (isDevelopment) {
         const visibilityState = top?.document?.visibilityState;
 
         if (visibilityState === "visible") {
-          if (logseq.settings?.autoCheckSynced) checkIsSynced();
+          if (logseq.settings?.autoCheckSynced) {
+            checkIsSynced();
+          }
         } else if (visibilityState === "hidden") {
           // logseq.UI.showMsg(`Page is hidden: ${new Date()}`, 'success', { timeout: 0 })
           // noChange void
           // changed commit push
           if (logseq.settings?.autoPush) {
-            await operations.commitAndPush();
+            operations.commitAndPush();
           }
         }
       });
@@ -250,7 +315,7 @@ if (isDevelopment) {
           mode: "global",
         },
       },
-      async () => await operations.commit()
+      async () => operations.commit()
     );
     logseq.App.registerCommandPalette(
       {
@@ -261,7 +326,7 @@ if (isDevelopment) {
           mode: "global",
         },
       },
-      async () => await operations.commitAndPush()
+      async () => operations.commitAndPush()
     );
     logseq.App.registerCommandPalette(
         {
@@ -272,7 +337,7 @@ if (isDevelopment) {
             mode: "global",
           },
         },
-        async () => await operations.pullRebase()
+        async () => operations.pullRebase()
     );
   });
 }
