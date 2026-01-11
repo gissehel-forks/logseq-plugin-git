@@ -1,5 +1,6 @@
 // https://logseq.github.io/plugins/interfaces/IAppProxy.html#execGitCommand
 import type { IGitResult } from "@logseq/libs/dist/LSPlugin.user"
+import { StatusState } from "./indicators"
 
 let _inProgress: Promise<IGitResult> | undefined = undefined
 
@@ -85,9 +86,14 @@ export const log = async (showRes = true): Promise<IGitResult> => {
 }
 
 // git pull
-export const pull = async (showRes = true): Promise<IGitResult> => {
+export const pull = async (showRes = true, statusState?: StatusState): Promise<IGitResult> => {
   const res = await execGitCommand(['pull'])
   console.log('[faiz:] === git pull', res)
+  if (statusState) {
+    if (res.exitCode === 0) {
+      statusState.needPullRebase = false;
+    }
+  }
   if (showRes) {
     if (res.exitCode === 0) {
       logseq.UI.showMsg('Git pull success')
@@ -99,9 +105,14 @@ export const pull = async (showRes = true): Promise<IGitResult> => {
 }
 
 // git pull --rebase
-export const pullRebase = async (showRes = true): Promise<IGitResult> => {
+export const pullRebase = async (showRes = true, statusState?: StatusState): Promise<IGitResult> => {
   const res = await execGitCommand(['pull', '--rebase'])
   console.log('[faiz:] === git pull --rebase', res)
+  if (statusState) {
+    if (res.exitCode === 0) {
+      statusState.needPullRebase = false;
+    }
+  }
   if (showRes) {
     if (res.exitCode === 0) {
       logseq.UI.showMsg('Git pull --rebase success')
@@ -127,11 +138,19 @@ export const checkout = async (showRes = true): Promise<IGitResult> => {
 }
 
 // git commit
-export const commit = async (showRes = true, message: string): Promise<IGitResult> => {
+export const commit = async (showRes = true, message: string, statusState?: StatusState): Promise<IGitResult> => {
   await execGitCommand(['add', '.'])
   // git commit -m "message"
   const res = await execGitCommand(['commit', '-m', message])
   console.log('[faiz:] === git commit', res)
+  if (statusState) {
+    if (res.exitCode === 0) {
+      statusState.needCommit = false;
+      statusState.needPush = true;
+    } else {
+      statusState.needCommit = true;
+    }
+  }
   if (showRes) {
     if (res.exitCode === 0) {
       logseq.UI.showMsg('Git commit success')
@@ -143,10 +162,15 @@ export const commit = async (showRes = true, message: string): Promise<IGitResul
 }
 
 // push
-export const push = async (showRes = true): Promise<IGitResult> => {
+export const push = async (showRes = true, statusState?: StatusState): Promise<IGitResult> => {
   // git push
   const res = await execGitCommand(['push'])
   console.log('[faiz:] === git push', res)
+  if (statusState) {
+    if (res.exitCode === 0) {
+      statusState.needPush = false;
+    }
+  }
   if (showRes) {
     if (res.exitCode === 0) {
       logseq.UI.showMsg('Git push success')

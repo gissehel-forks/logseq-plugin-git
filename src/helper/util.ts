@@ -5,33 +5,69 @@ import {
   STATUS,
 } from "./constants";
 import { status, inProgress, execGitCommand, pull, checkPullPushNeeded } from "./git";
+import { setCommitStatus, setExceptionInProgress, setExceptionStatus, setPullStatus, setPushStatus, StatusState } from "./indicators";
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+export const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export const checkStatus = async () => {
-  console.log("Checking status...");  
+/**
+ * Run asynchronous code in the background without blocking the main thread.
+ * That function seems useless, as a simple to asyncCode without await would do the same, 
+ * but the whole point is to have a named function for better readability.
+ * 
+ * Everywhere else, an async function should be called with await.
+ * @param asyncCode The asynchronous code to run in the background.
+ */
+export const runInBackground = (asyncCode: (...args: any[]) => Promise<any>) => {
+  setTimeout(() => asyncCode(), 0);
+}
+
+export const checkStatus = async (statusState?: StatusState) => {
+  console.log("Checking status...");
+  await setExceptionStatus(STATUS.EXCEPTION.NO_ERROR);
+  await setExceptionInProgress(false);
+
   const statusRes = await status(false);
   if (statusRes?.stdout === "") {
     console.log("No changes", statusRes);
+    if (statusState) {
+      statusState.needCommit = false;
+      statusState.commitList = null;
+    }
     await setCommitStatus(STATUS.COMMIT.CLEAN);
   } else {
     console.log("Need save", statusRes);
+    if (statusState) {
+      statusState.needCommit = true;
+      statusState.commitList = statusRes?.stdout;
+    }
     await setCommitStatus(STATUS.COMMIT.DIRTY);
   }
   await delay(100);
   const pullPushNeeded = await checkPullPushNeeded();
   if (pullPushNeeded.needPull) {
     console.log("Need pull");
+    if (statusState) {
+      statusState.needPullRebase = true;
+    }
     await setPullStatus(STATUS.PULL.NEEDED);
   } else {
     console.log("No need pull");
+    if (statusState) {
+      statusState.needPullRebase = false;
+    }
     await setPullStatus(STATUS.PULL.NOT_NEEDED);
   }
   if (pullPushNeeded.needPush) {
     console.log("Need push");
+    if (statusState) {
+      statusState.needPush = true;
+    }
     await setPushStatus(STATUS.PUSH.NEEDED);
   } else {
     console.log("No need push");
+    if (statusState) {
+      statusState.needPush = false;
+    }
     await setPushStatus(STATUS.PUSH.NOT_NEEDED);
   }
   return statusRes;
@@ -43,81 +79,6 @@ export const setPluginStyle = (style: string) => {
   logseq.provideStyle({ key: "git", style });
 };
 export const getPluginStyle = () => pluginStyle;
-
-let pullStatus: string | null = null;
-let pushStatus: string | null = null;
-let commitStatus: string | null = null;
-let commitInProgress: boolean = false;
-let pullInProgress: boolean = false;
-let pushInProgress: boolean = false;
-
-const setIndicator = (element, value, valueSet, valueRemove, className) => {
-  if (value === valueSet) {
-    element?.classList?.add(className);
-  }
-  if (value === valueRemove) {
-    element?.classList?.remove(className);
-  }
-};
-
-const setIndicatorBoolean = (element, value, className) => {
-  if (value) {
-    element?.classList?.add(className);
-  } else {
-    element?.classList?.remove(className);
-  }
-};
-
-const updateStatusIndicators = async () => {
-  const indicatorElement = top?.document?.querySelector('#logseq-git--git')
-  console.log({indicatorElement, pullStatus, pushStatus, commitStatus, commitInProgress, pullInProgress, pushInProgress});
-  if (indicatorElement == null) return;
-
-  setIndicator(indicatorElement, pullStatus, STATUS.PULL.NEEDED, STATUS.PULL.NOT_NEEDED, "git-pull");
-  setIndicator(indicatorElement, pushStatus, STATUS.PUSH.NEEDED, STATUS.PUSH.NOT_NEEDED, "git-push");
-  setIndicator(indicatorElement, commitStatus, STATUS.COMMIT.DIRTY, STATUS.COMMIT.CLEAN, "git-commit");
-  setIndicatorBoolean(indicatorElement, commitInProgress, "git-blink-commit");
-  setIndicatorBoolean(indicatorElement, pullInProgress, "git-blink-pull");
-  setIndicatorBoolean(indicatorElement, pushInProgress, "git-blink-push");
-}
-// @ts-ignore
-window.updateStatusIndicators = updateStatusIndicators;
-
-export const setPullStatus = async (status: string | null) => {
-  pullStatus = status;
-  await updateStatusIndicators();
-};
-export const getPullStatus = async () => pullStatus;
-
-export const setPushStatus = async (status: string | null) => {
-  pushStatus = status;
-  await updateStatusIndicators();
-};
-export const getPushStatus = async () => pushStatus;
-
-export const setCommitStatus = async (status: string | null) => {
-  commitStatus = status;
-  await updateStatusIndicators();
-};
-export const getCommitStatus = async () => commitStatus;
-
-export const setCommitInProgress = async (inProgress: boolean) => {
-  commitInProgress = inProgress;
-  await updateStatusIndicators();
-};
-export const getCommitInProgress = async () => commitInProgress;
-
-export const setPullInProgress = async (inProgress: boolean) => {
-  pullInProgress = inProgress;
-  await updateStatusIndicators();
-};
-export const getPullInProgress = async () => pullInProgress;
-
-export const setPushInProgress = async (inProgress: boolean) => {
-  pushInProgress = inProgress;
-  await updateStatusIndicators();
-};
-export const getPushInProgress = async () => pushInProgress;
 
 export const showPopup = () => {
   const _style = getPluginStyle();
@@ -187,3 +148,4 @@ export const checkIsSynced = async () => {
       { timeout: 0 }
     );
 };
+

@@ -39,30 +39,63 @@ export const COMMON_STYLE = `
   border-width: 0 10px 8px 10px;
   border-color: transparent transparent var(--ls-secondary-background-color) transparent;
 }
-.git-status-push, .git-status-pull, .git-status-commit {
+
+.git-status-push, 
+.git-status-pull, 
+.git-status-commit, 
+.git-status-exception {
   position: absolute;
-  display: block;
+  display: none;
   width: 8px;
   height: 8px;
   border-radius: 100%;
   right: 0px;
   top: 8px;
 }
+
+.git-blink-push .git-status-push,
 .git-push .git-status-push {
   background-color: rgb(59, 130, 246); /* blue-500 */
   right: 4px;
 }
+
+.git-blink-pull .git-status-pull,
 .git-pull .git-status-pull {
   background-color: rgb(251, 191, 36); /* yellow-400 */
   right: 14px;
 }
+
+.git-blink-commit .git-status-commit,
 .git-commit .git-status-commit {
   background-color: rgb(239, 68, 68); /* red-500 */
   right: 24px;
 }
-.git-blink-push.git-push .git-status-push, .git-blink-pull.git-pull .git-status-pull, .git-blink-commit.git-commit .git-status-commit {
+
+.git-blink-exception .git-status-exception,
+.git-exception .git-status-exception {
+  background-color: rgb(107, 114, 128); /* gray-500 */
+  top: 18px;
+  right: 14px;
+}
+
+.git-push .git-status-push,
+.git-pull .git-status-pull,
+.git-commit .git-status-commit,
+.git-exception .git-status-exception,
+.git-blink-push .git-status-push, 
+.git-blink-pull .git-status-pull, 
+.git-blink-commit .git-status-commit, 
+.git-blink-exception .git-status-exception {
+  display: block;
+}
+
+.git-blink-push.git-push .git-status-push, 
+.git-blink-pull.git-pull .git-status-pull, 
+.git-blink-commit.git-commit .git-status-commit, 
+.git-blink-exception.git-exception .git-status-exception {
   animation: blink 1s ease-in-out infinite;
 }
+
 @keyframes blink {
   0% {
     opacity: 1;
@@ -161,5 +194,9 @@ export const STATUS = {
   COMMIT: {
     CLEAN: "CLEAN",
     DIRTY: "DIRTY",
+  },
+  EXCEPTION: {
+    NO_ERROR: "NO_ERROR",
+    ERROR: "ERROR",
   },
 }
