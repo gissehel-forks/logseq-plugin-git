@@ -7,6 +7,12 @@ import {
 import { status, inProgress, execGitCommand, pull, checkPullPushNeeded } from "./git";
 import { setCommitStatus, setExceptionInProgress, setExceptionStatus, setPullStatus, setPushStatus, StatusState } from "./indicators";
 
+/**
+ * Delay execution for a specified number of milliseconds.
+ * This can be used to create a pause in the execution of asynchronous code, allowing other operations to run in the meantime.
+ * @param ms The number of milliseconds to delay.
+ * @returns A promise that resolves after the specified delay.
+ */
 export const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**

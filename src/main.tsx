@@ -43,8 +43,6 @@ try {
   }
 }
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 const isDevelopment = import.meta.env.DEV
 
 if (isDevelopment) {
@@ -186,8 +184,12 @@ if (isDevelopment) {
           await stepSyncCommand(stepManager);
         }
 
-        await stepCheckStatus(stepManager);
-        
+        await stepException(stepManager);
+
+        if (stepManager.success) {
+          await stepCheckStatus(stepManager);
+        }
+
         await stepStop(stepManager);
       }),
       log: debounce(async function () {

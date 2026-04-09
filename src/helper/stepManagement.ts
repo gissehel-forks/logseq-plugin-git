@@ -1,6 +1,6 @@
 import { STATUS } from "./constants";
 import { commit, commitMessage, pull, pullRebase, push, sync } from "./git";
-import { setCommitInProgress, setCommitStatus, setExceptionStatus, setPullInProgress, setPullStatus, setPushInProgress, setPushStatus } from "./indicators";
+import { setCommitInProgress, setCommitStatus, setExceptionInProgress, setExceptionStatus, setPullInProgress, setPullStatus, setPushInProgress, setPushStatus } from "./indicators";
 import { StepManager } from "./StepManager";
 import { checkStatus, delay, runInBackground } from "./util";
 
@@ -65,6 +65,7 @@ export const stepException = async (stepManager: StepManager) => {
         await setPullStatus(STATUS.PULL.NOT_NEEDED)
         await setPushStatus(STATUS.PUSH.NOT_NEEDED)
         await setExceptionStatus(STATUS.EXCEPTION.ERROR);
+        await setExceptionInProgress(true);
         runInBackground(async () => {
             await delay(15000);
             await stepCheckStatus(stepManager);
@@ -73,14 +74,15 @@ export const stepException = async (stepManager: StepManager) => {
 }
 
 export const stepSyncCommand = async (stepManager: StepManager) => {
-    let result = false;
     await setCommitInProgress(true);
     await setPullInProgress(true);
     await setPushInProgress(true);
 
+    let result = false;
+
     await stepManager.executeStep("syncCommand", async (statusState) => {
         await sync(true, statusState)
-        result = (statusState?.needCommit === false) && (statusState?.needPullRebase === false) && (statusState?.needPush === false);
+        result = (statusState?.needCommit === false) && (statusState?.needPullRebase === false) && (statusState?.needPush === false);;
         return result;
     });
 
