@@ -181,6 +181,28 @@ export const push = async (showRes = true, statusState?: StatusState): Promise<I
   return res
 }
 
+// sync
+export const sync = async (showRes = true, statusState?: StatusState): Promise<IGitResult> => {
+  // git sync
+  const res = await execGitCommand(['sync'])
+  console.log('[faiz:] === git sync', res)
+  if (statusState) {
+    if (res.exitCode === 0) {
+      statusState.needCommit = false;
+      statusState.needPullRebase = false;
+      statusState.needPush = false;
+    }
+  }
+  if (showRes) {
+    if (res.exitCode === 0) {
+      logseq.UI.showMsg('Git sync success')
+    } else {
+      logseq.UI.showMsg(`Git sync failed\n${res.stderr}`, 'error')
+    }
+  }
+  return res
+}
+
 
 /**
  * Returns the commit message based on the selected commit message type in the logseq settings.

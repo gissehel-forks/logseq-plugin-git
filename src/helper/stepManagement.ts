@@ -1,5 +1,5 @@
 import { STATUS } from "./constants";
-import { commit, commitMessage, pull, pullRebase, push } from "./git";
+import { commit, commitMessage, pull, pullRebase, push, sync } from "./git";
 import { setCommitInProgress, setCommitStatus, setExceptionStatus, setPullInProgress, setPullStatus, setPushInProgress, setPushStatus } from "./indicators";
 import { StepManager } from "./StepManager";
 import { checkStatus, delay, runInBackground } from "./util";
@@ -18,6 +18,7 @@ export const stepCommit = async (stepManager: StepManager) => {
         return (statusState?.needCommit === false);
     });
     await setCommitInProgress(false);
+    await setCommitStatus(STATUS.COMMIT.CLEAN);
 }
 
 export const stepPull = async (stepManager: StepManager) => {
@@ -30,21 +31,29 @@ export const stepPull = async (stepManager: StepManager) => {
 }
 
 export const stepPullRebase = async (stepManager: StepManager) => {
+    let result = false;
     await setPullInProgress(true);
     await stepManager.executeStep("pullRebase", async (statusState) => {
         await pullRebase(true, statusState)
-        return (statusState?.needPullRebase === false);
+        result = (statusState?.needPullRebase === false);
+        return result;
     });
     await setPullInProgress(false);
+    await setPullStatus(STATUS.PULL.NOT_NEEDED);
+    return result;
 }
 
 export const stepPush = async (stepManager: StepManager) => {
+    let result = false;
     await setPushInProgress(true);
     await stepManager.executeStep("push", async (statusState) => {
         await push(true, statusState)
-        return (statusState?.needPush === false);
+        result = (statusState?.needPush === false);
+        return result;
     });
     await setPushInProgress(false);
+    await setPushStatus(STATUS.PUSH.NOT_NEEDED);
+    return result;
 }
 
 export const stepException = async (stepManager: StepManager) => {
@@ -61,6 +70,28 @@ export const stepException = async (stepManager: StepManager) => {
             await stepCheckStatus(stepManager);
         })
     }
+}
+
+export const stepSyncCommand = async (stepManager: StepManager) => {
+    let result = false;
+    await setCommitInProgress(true);
+    await setPullInProgress(true);
+    await setPushInProgress(true);
+
+    await stepManager.executeStep("syncCommand", async (statusState) => {
+        await sync(true, statusState)
+        result = (statusState?.needCommit === false) && (statusState?.needPullRebase === false) && (statusState?.needPush === false);
+        return result;
+    });
+
+    await setCommitInProgress(false);
+    await setPullInProgress(false);
+    await setPushInProgress(false);
+    await setCommitStatus(STATUS.COMMIT.CLEAN);
+    await setPullStatus(STATUS.PULL.NOT_NEEDED);
+    await setPushStatus(STATUS.PUSH.NOT_NEEDED);
+
+    return result;
 }
 
 export const stepStop = async (stepManager: StepManager) => {

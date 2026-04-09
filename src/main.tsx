@@ -24,7 +24,7 @@ import {
 } from "./helper/util";
 import "./index.css";
 import { StepManager } from "./helper/StepManager";
-import { stepCheckStatus, stepCommit, stepException, stepPull, stepPullRebase, stepPush, stepStop } from "./helper/stepManagement";
+import { stepCheckStatus, stepCommit, stepException, stepPull, stepPullRebase, stepPush, stepStop, stepSyncCommand } from "./helper/stepManagement";
 import { setCommitInProgress, setCommitStatus, setExceptionStatus, setPullInProgress, setPullStatus, setPushInProgress, setPushStatus } from "./helper/indicators";
 
 // TODO: patch logseq Git command for the temporary fix solution
@@ -170,6 +170,24 @@ if (isDevelopment) {
           await stepCheckStatus(stepManager);
         }
 
+        await stepStop(stepManager);
+      }),
+      syncCommand: debounce(async function () {
+        console.log("[faiz:] === syncCommand click");
+        hidePopup();
+
+        const stepManager = new StepManager("syncCommand");
+
+        if (stepManager.success) {
+          await stepCheckStatus(stepManager);
+        }
+
+        if (stepManager.success) {
+          await stepSyncCommand(stepManager);
+        }
+
+        await stepCheckStatus(stepManager);
+        
         await stepStop(stepManager);
       }),
       log: debounce(async function () {
