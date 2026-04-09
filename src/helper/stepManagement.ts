@@ -67,7 +67,7 @@ export const stepException = async (stepManager: StepManager) => {
         await setExceptionStatus(STATUS.EXCEPTION.ERROR);
         await setExceptionInProgress(true);
         runInBackground(async () => {
-            await delay(25000);
+            await delay(35000);
             await stepCheckStatus(stepManager);
         })
     }
