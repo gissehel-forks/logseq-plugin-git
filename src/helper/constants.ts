@@ -89,10 +89,10 @@ export const COMMON_STYLE = `
   display: block;
 }
 
-.git-blink-push.git-push .git-status-push, 
-.git-blink-pull.git-pull .git-status-pull, 
-.git-blink-commit.git-commit .git-status-commit, 
-.git-blink-exception.git-exception .git-status-exception {
+.git-blink-push .git-status-push, 
+.git-blink-pull .git-status-pull, 
+.git-blink-commit .git-status-commit, 
+.git-blink-exception .git-status-exception {
   animation: blink 1s ease-in-out infinite;
 }
 
